@@ -6,6 +6,10 @@ import importlib.util
 import folder_paths
 import time
 
+from custom_nodes.comfy_scheduler.redis_client import RedisClient
+from custom_nodes.comfy_scheduler.task_consumer import task_daemon_scheduler
+
+
 def execute_prestartup_script():
     def execute_script(script_path):
         module_name = os.path.splitext(script_path)[0]
@@ -221,6 +225,11 @@ if __name__ == "__main__":
     hijack_progress(server)
 
     threading.Thread(target=prompt_worker, daemon=True, args=(q, server,)).start()
+
+    # comfy scheduler
+    comfy_execution = execution.PromptExecutor(server)
+    redis_op = RedisClient()
+    threading.Thread(target=task_daemon_scheduler, daemon=True, args=(server, comfy_execution, redis_op,)).start()
 
     if args.output_directory:
         output_dir = os.path.abspath(args.output_directory)

@@ -655,6 +655,12 @@ class PromptServer():
             await send_socket_catch_exception(self.sockets[sid].send_json, message)
 
     def send_sync(self, event, data, sid=None):
+        if event in ["execution_start", "execution_interrupted", "execution_error"]:
+            self.send_msg2redis(event, data)
+        self.loop.call_soon_threadsafe(
+            self.messages.put_nowait, (event, data, sid))
+
+    def send_msg2redis(self, event, data):
         if hasattr(self, "last_prompt_id") is not True:
             logging.warning("server has not attr last_prompt_id")
             return
@@ -664,11 +670,11 @@ class PromptServer():
             "type": event,
             "data": data,
         }
+        begin = time.time()
         res = self.redis_op.zadd_with_expire(key, json.dumps(message), int(time.time()), 120)
+        logging.info("send_message time: {} seconds. event: {}".format(time.time() - begin, event))
         if not res:
-            logging.warning(f"Failed to send {event}")
-        self.loop.call_soon_threadsafe(
-            self.messages.put_nowait, (event, data, sid))
+            logging.error("failed to send_message. key: {}. event: {}".format(key, event))
 
     def queue_updated(self):
         self.send_sync("status", { "status": self.get_queue_info() })

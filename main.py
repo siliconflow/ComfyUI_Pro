@@ -241,9 +241,11 @@ if __name__ == "__main__":
     threading.Thread(target=prompt_worker, daemon=True, args=(q, server,)).start()
 
     # comfy scheduler
-    comfy_execution = execution.PromptExecutor(server)
-    redis_op = RedisClient()
-    threading.Thread(target=task_daemon_scheduler, daemon=True, args=(server, comfy_execution, redis_op,)).start()
+    is_run_pro = os.getenv("IS_RUN_PRO", False)
+    if is_run_pro:
+        comfy_execution = execution.PromptExecutor(server)
+        redis_op = RedisClient()
+        threading.Thread(target=task_daemon_scheduler, daemon=True, args=(server, comfy_execution, redis_op,)).start()
 
     if args.output_directory:
         output_dir = os.path.abspath(args.output_directory)
